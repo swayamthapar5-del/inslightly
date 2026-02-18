@@ -1,0 +1,262 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  COMPANY
+  ADMIN
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum QuestionType {
+  MCQ
+  RATING
+  TEXT
+}
+
+enum TransactionType {
+  EARN
+  REDEEM
+  PAYOUT
+  ADJUST
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum RewardStatus {
+  AVAILABLE
+  REDEEMED
+  EXPIRED
+}
+
+enum FraudStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+}
+
+model User {
+  id              String        @id @default(cuid())
+  email           String        @unique
+  passwordHash    String?
+  name            String
+  role            Role          @default(USER)
+  country         String?
+  city            String?
+  ageRange        String?
+  interests       String[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+
+  wallet          Wallet?
+  responses       Response[]
+  rewards         Reward[]
+  notifications   Notification[]
+  consents        Consent[]
+  companyMembers  CompanyMember[]
+  fraudFlags      FraudFlag[]
+  payouts         Payout[]
+  refreshTokens   RefreshToken[]
+
+  @@index([role])
+}
+
+model Company {
+  id          String          @id @default(cuid())
+  name        String
+  domain      String?
+  plan        String          @default("starter")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  members     CompanyMember[]
+  campaigns   Campaign[]
+}
+
+model CompanyMember {
+  id          String   @id @default(cuid())
+  companyId   String
+  userId      String
+  role        String   @default("owner")
+  createdAt   DateTime @default(now())
+
+  company     Company  @relation(fields: [companyId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@unique([companyId, userId])
+}
+
+model Campaign {
+  id                 String         @id @default(cuid())
+  companyId          String
+  title              String
+  description        String?
+  status             CampaignStatus @default(DRAFT)
+  budgetTotal        Int
+  budgetPerResponse  Int
+  targetFilters      Json
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  company            Company        @relation(fields: [companyId], references: [id])
+  questions          SurveyQuestion[]
+  responses          Response[]
+
+  @@index([status])
+}
+
+model SurveyQuestion {
+  id          String       @id @default(cuid())
+  campaignId  String
+  type        QuestionType
+  prompt      String
+  options     Json?
+  order       Int
+
+  campaign    Campaign     @relation(fields: [campaignId], references: [id])
+}
+
+model Response {
+  id            String    @id @default(cuid())
+  campaignId    String
+  userId        String
+  anonymizedId  String
+  answers       Json
+  sentiment     Float?
+  createdAt     DateTime  @default(now())
+
+  campaign      Campaign  @relation(fields: [campaignId], references: [id])
+  user          User      @relation(fields: [userId], references: [id])
+
+  @@index([campaignId])
+  @@index([userId])
+}
+
+model Wallet {
+  id          String              @id @default(cuid())
+  userId      String              @unique
+  balance     Int                 @default(0)
+  currency    String              @default("USD")
+
+  user        User                @relation(fields: [userId], references: [id])
+  transactions WalletTransaction[]
+}
+
+model WalletTransaction {
+  id          String             @id @default(cuid())
+  walletId    String
+  type        TransactionType
+  amount      Int
+  status      TransactionStatus  @default(PENDING)
+  metadata    Json?
+  createdAt   DateTime           @default(now())
+
+  wallet      Wallet             @relation(fields: [walletId], references: [id])
+}
+
+model Reward {
+  id          String        @id @default(cuid())
+  userId      String
+  type        String
+  value       Int
+  status      RewardStatus  @default(AVAILABLE)
+  meta        Json?
+  createdAt   DateTime      @default(now())
+
+  user        User          @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id          String    @id @default(cuid())
+  userId      String
+  type        String
+  title       String
+  body        String
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id])
+}
+
+model Consent {
+  id            String   @id @default(cuid())
+  userId        String
+  policyVersion String
+  acceptedAt    DateTime @default(now())
+
+  user          User     @relation(fields: [userId], references: [id])
+}
+
+model FraudFlag {
+  id        String       @id @default(cuid())
+  userId    String
+  reason    String
+  score     Float
+  status    FraudStatus  @default(OPEN)
+  createdAt DateTime     @default(now())
+
+  user      User         @relation(fields: [userId], references: [id])
+}
+
+model Payout {
+  id          String             @id @default(cuid())
+  userId      String
+  amount      Int
+  status      TransactionStatus  @default(PENDING)
+  provider    String
+  providerRef String?
+  createdAt   DateTime           @default(now())
+
+  user        User               @relation(fields: [userId], references: [id])
+}
+
+model RefreshToken {
+  id          String   @id @default(cuid())
+  userId      String
+  tokenHash   String
+  userAgent   String?
+  ipAddress   String?
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  provider    String
+  eventId     String   @unique
+  eventType   String
+  payload     Json
+  createdAt   DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String
+  metadata  Json?
+  createdAt DateTime @default(now())
+}
