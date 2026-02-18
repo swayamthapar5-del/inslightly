@@ -6,7 +6,7 @@
     "dev": "pnpm -r dev",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
-    "ci:api": "pnpm --filter api lint && pnpm --filter api test:authz && pnpm --filter api build",
+    "ci:api": "pnpm --filter api db:generate && pnpm --filter api lint && pnpm --filter api test:authz && pnpm --filter api build",
     "ci:web": "pnpm --filter web lint && pnpm --filter web build",
     "ci:check": "pnpm ci:api && pnpm ci:web",
     "format": "pnpm -r format",
