@@ -1,9 +1,19 @@
 import * as assert from "node:assert/strict";
 import { ForbiddenException } from "@nestjs/common";
-import { CampaignStatus, Role } from "@prisma/client";
 import { AnalyticsService } from "../src/analytics/analytics.service";
 import { CampaignsService } from "../src/campaigns/campaigns.service";
 import { SurveysService } from "../src/surveys/surveys.service";
+
+const Role = {
+  USER: "USER",
+  COMPANY: "COMPANY",
+  ADMIN: "ADMIN"
+} as const;
+
+const CampaignStatus = {
+  ACTIVE: "ACTIVE",
+  DRAFT: "DRAFT"
+} as const;
 
 type MockFn<TArgs extends unknown[] = unknown[], TResult = unknown> = ((...args: TArgs) => TResult) & {
   calls: TArgs[];
